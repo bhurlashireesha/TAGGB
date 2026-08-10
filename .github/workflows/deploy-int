@@ -3,6 +3,8 @@ name: Deploy INT and Create Release Tag
 on:
   push:
     branches: [int]
+  pull_request:
+    branches: [int]
   workflow_dispatch:
     inputs:
       from_ref:

@@ -34,4 +34,3 @@ PY
 # Ensure the generated CSV is world-readable so GitHub Actions can attach it
 chmod 644 "$delta_dir/component-version-map.csv"
 chmod 644 "$delta_dir/package/package.xml"
-

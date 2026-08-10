@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+# Make this script executable if not already
+chmod +x "$0"
+
 delta_dir="${1:?Usage: build-component-ledger.sh <delta-dir> <tag> <from> <to>}"
 tag="${2:?tag required}"
 from_ref="${3:?from required}"
 to_ref="${4:?to required}"
+
 python3 - "$delta_dir" "$tag" "$from_ref" "$to_ref" <<'PY'
 import csv, pathlib, sys, xml.etree.ElementTree as ET
 root_dir, tag, from_ref, to_ref = sys.argv[1:]

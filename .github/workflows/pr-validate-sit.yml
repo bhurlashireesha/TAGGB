@@ -1,0 +1,242 @@
+
+
+
+0560758e-ed12-48c7-8107-785fd5bf8533.png
+give exact code written in the notepad
+
+7df54594-5a2d-44f6-b0b5-68097273f2ac.png
+generate exact code from the notepad
+
+5799179a-7340-484d-89c1-1daa183d6e36.png
+generate the exact code written in the notepad
+
+177454e6-358b-493a-a967-930086a484f3.png
+generate exact code from the notepad
+
+4b13a9b3-3bff-403a-a3fd-bf8217267251.png
+generate exact code written in the notepad
+
+139abea3-67c0-4c5a-8323-5ada564c3d5d.png
+generate exact code written in the notepad
+
+ea1b9b8b-3543-4b48-9fbf-63652f45c024.png
+generate exact code written in the notepad
+
+6afef4ff-8d34-4ee5-ad2f-6dc3ff11da63.png
+genarte exact code written in the notepad
+
+3f98c14b-cea4-4472-a46a-3faddf6385a2.png
+generate the excat code
+
+ed27bb70-0488-4363-8cb9-90709e587b2b.png
+generate exact code from the notepad
+
+04d6089c-0ed8-4b73-82d9-150c1641cf1b.png
+generate exact code from the notepad
+
+      - name: Install Salesforce CLI and SGD
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global @salesforce/cli@2
+          echo y | sf plugins install "sfdx-git-delta@${SGD_VERSION}"
+          sf version
+          sf plugins
+
+      - name: Authenticate to SIT
+        shell: bash
+        env:
+          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+        run: ./scripts/authenticate.sh "$SF_TARGET_ORG"
+
+      - name: Generate PR delta
+        shell: bash
+        env:
+          FROM_REF: ${{ github.event.pull_request.base.sha }}
+          TO_REF: ${{ github.event.pull_request.head.sha }}
+        run: ./scripts/generate-delta.sh "$FROM_REF" "$TO_REF" delta
+
+      - name: Validate delta against SIT
+        id: validate
+        shell: bash
+        run: ./scripts/deploy-delta.sh validate delta "$SF_TARGET_ORG" "$SF_TEST_LEVEL"
+
+      - name: Upload generated manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+
+52b52c92-70ac-4587-935d-df59c3ad16b0.png
+generate exact code from the notepad
+
+    with:
+      name: sit-pr-delta-${{ github.event.pull_request.number }}
+      path: |
+        delta/package/package.xml
+        delta/destructiveChanges/destructiveChanges.xml
+        delta/component-version-map.csv
+      if-no-files-found: ignore
+      retention-days: 14
+
+  - name: Logout and remove auth file
+    if: always()
+    shell: bash
+    run: |
+      sf org logout --target-org "$SF_TARGET_ORG" --no-prompt || true
+      rm -f .sf-auth-url.txt
+
+can you update the indentation only. Do not changes anything.
+
+name: SIT PR Validation
+
+on:
+pull_request:
+branches: [sit]
+types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+contents: read
+
+concurrency:
+group: sit-pr-${{ github.event.pull_request.number }}
+cancel-in-progress: true
+
+jobs:
+validate:
+if: github.event.pull_request.draft == false
+runs-on: ubuntu-latest
+environment: sit-validation
+timeout-minutes: 60
+env:
+SF_TARGET_ORG: SIT
+SF_TEST_LEVEL: RunLocalTests
+SGD_VERSION: 7.2.0
+
+steps:
+  - name: Checkout PR commit with full history
+    uses: actions/checkout@v4
+    with:
+      ref: ${{ github.event.pull_request.head.sha }}
+      fetch-depth: 0
+  - name: Install Salesforce CLI and SGD
+    shell: bash
+    run: |
+      set -euo pipefail
+      npm install --global @salesforce/cli@2
+      echo y | sf plugins install "sfdx-git-delta@${SGD_VERSION}"
+      sf version
+      sf plugins
+
+  - name: Authenticate to SIT
+    shell: bash
+    env:
+      SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+    run: ./scripts/authenticate.sh "$SF_TARGET_ORG"
+
+  - name: Generate PR delta
+    shell: bash
+    env:
+      FROM_REF: ${{ github.event.pull_request.base.sha }}
+      TO_REF: ${{ github.event.pull_request.head.sha }}
+    run: ./scripts/generate-delta.sh "$FROM_REF" "$TO_REF" delta
+
+  - name: Validate delta against SIT
+    id: validate
+    shell: bash
+    run: ./scripts/deploy-delta.sh validate delta "$SF_TARGET_ORG" "$SF_TEST_LEVEL"
+
+  - name: Upload generated manifests
+    if: always()
+    uses: actions/upload-artifact@v4
+with:
+  name: sit-pr-delta-${{ github.event.pull_request.number }}
+  path: |
+    delta/package/package.xml
+    delta/destructiveChanges/destructiveChanges.xml
+    delta/component-version-map.csv
+  if-no-files-found: ignore
+  retention-days: 14
+name: Logout and remove auth file
+if: always()
+shell: bash
+run: |
+sf org logout --target-org "$SF_TARGET_ORG" --no-prompt || true
+rm -f .sf-auth-url.txt
+
+name: SIT PR Validation
+
+on:
+  pull_request:
+    branches: [sit]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sit-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    environment: sit-validation
+    timeout-minutes: 60
+    env:
+      SF_TARGET_ORG: SIT
+      SF_TEST_LEVEL: RunLocalTests
+      SGD_VERSION: 7.2.0
+
+    steps:
+      - name: Checkout PR commit with full history
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Install Salesforce CLI and SGD
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global @salesforce/cli@2
+          echo y | sf plugins install "sfdx-git-delta@${SGD_VERSION}"
+          sf version
+          sf plugins
+
+      - name: Authenticate to SIT
+        shell: bash
+        env:
+          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+        run: ./scripts/authenticate.sh "$SF_TARGET_ORG"
+
+      - name: Generate PR delta
+        shell: bash
+        env:
+          FROM_REF: ${{ github.event.pull_request.base.sha }}
+          TO_REF: ${{ github.event.pull_request.head.sha }}
+        run: ./scripts/generate-delta.sh "$FROM_REF" "$TO_REF" delta
+
+      - name: Validate delta against SIT
+        id: validate
+        shell: bash
+        run: ./scripts/deploy-delta.sh validate delta "$SF_TARGET_ORG" "$SF_TEST_LEVEL"
+
+      - name: Upload generated manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sit-pr-delta-${{ github.event.pull_request.number }}
+          path: |
+            delta/package/package.xml
+            delta/destructiveChanges/destructiveChanges.xml
+            delta/component-version-map.csv
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Logout and remove auth file
+        if: always()
+        shell: bash
+        run: |
+          sf org logout --target-org "$SF_TARGET_ORG" --no-prompt || true
+          rm -f .sf-auth-url.txt
+

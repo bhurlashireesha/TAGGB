@@ -115,11 +115,11 @@ jobs:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           set -euo pipefail
-          gh release create "$RELEASE_TAG" 
-          delta/component-version-map.csv 
-          delta/package/package.xml 
-          \--title "$RELEASE_TAG" 
-          \--notes "SIT deployment succeeded. Baseline: ${{ steps.baseline.outputs.from_ref }}. Revision: $GITHUB_SHA. The attached ledger maps every delta component to this release tag."
+          gh release create "$RELEASE_TAG" \
+            delta/component-version-map.csv \
+            delta/package/package.xml \
+            --title "$RELEASE_TAG" \
+            --notes "SIT deployment succeeded. Baseline: ${{ steps.baseline.outputs.from_ref }}. Revision: $GITHUB_SHA. The attached ledger maps every delta component to this release tag."
 
       - name: Upload deployment evidence
         if: always()

@@ -30,3 +30,6 @@ with out.open('w',newline='',encoding='utf-8') as f:
     w.writerows(sorted(rows,key=lambda r:(r[1],r[2],r[3])))
 print(f'Wrote {len(rows)} component rows to {out}')
 PY
+
+# Ensure the generated CSV is world-readable so GitHub Actions can attach it
+chmod 644 "$delta_dir/component-version-map.csv"

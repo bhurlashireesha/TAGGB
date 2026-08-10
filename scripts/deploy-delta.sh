@@ -31,4 +31,3 @@ else
     echo "Unsupported mode: $mode" >&2
     exit 2
 fi
-fi

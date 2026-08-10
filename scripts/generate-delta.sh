@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+# Ensure this script is executable
+chmod +x "$0"
+
 from_ref="${1:?Usage: generate-delta.sh <from> <to> [output-dir]}"
 to_ref="${2:?Usage: generate-delta.sh <from> <to> [output-dir]}"
 out_dir="${3:-delta}"

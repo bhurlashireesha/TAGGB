@@ -58,6 +58,9 @@ jobs:
           FROM_REF: ${{ github.event.pull_request.base.sha }}
           TO_REF: ${{ github.event.pull_request.head.sha }}
         run: ./scripts/generate-delta.sh "$FROM_REF" "$TO_REF" delta
+        
+      - name: Ensure select-tests.sh is executable
+        run: chmod +x ./scripts/select-tests.sh
 
       - name: Select deployment tests
         id: tests

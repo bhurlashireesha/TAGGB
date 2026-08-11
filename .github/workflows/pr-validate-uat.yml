@@ -45,6 +45,12 @@ jobs:
           echo y | sf plugins install "sfdx-git-delta@${SGD_VERSION}"
           sf version
           sf plugins
+          
+      - name: Make scripts executable
+        shell: bash
+        run: |
+          chmod +x scripts/*.sh
+          ls -la scripts
 
       - name: Authenticate to UAT
         shell: bash

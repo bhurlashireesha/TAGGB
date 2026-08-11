@@ -45,7 +45,6 @@ jobs:
           echo y | sf plugins install "sfdx-git-delta@${SGD_VERSION}"
           sf version
           sf plugins
-          
       - name: Make scripts executable
         shell: bash
         run: |

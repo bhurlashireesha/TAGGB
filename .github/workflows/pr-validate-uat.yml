@@ -1,0 +1,90 @@
+name: UAT PR Validation
+
+on:
+  pull_request:
+    branches: [uat]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uat-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    environment: uat-validation
+    timeout-minutes: 90
+    env:
+      SF_TARGET_ORG: UAT
+      SGD_VERSION: 7.2.0
+
+    steps:
+      - name: Enforce promotion path int to uat
+        shell: bash
+        run: |
+          if [[ "${{ github.head_ref }}" != "int" ]]; then
+            echo "Only PRs from int to uat are allowed. Actual source: ${{ github.head_ref }}"
+            exit 1
+          fi
+
+      - name: Checkout exact PR revision with full history
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Install Salesforce CLI and SGD
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global @salesforce/cli@2
+          echo y | sf plugins install "sfdx-git-delta@${SGD_VERSION}"
+          sf version
+          sf plugins
+
+      - name: Authenticate to UAT
+        shell: bash
+        env:
+          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+        run: ./scripts/authenticate.sh "$SF_TARGET_ORG"
+
+      - name: Generate PR delta
+        shell: bash
+        env:
+          FROM_REF: ${{ github.event.pull_request.base.sha }}
+          TO_REF: ${{ github.event.pull_request.head.sha }}
+        run: ./scripts/generate-delta.sh "$FROM_REF" "$TO_REF" delta
+
+      - name: Select deployment tests
+        id: tests
+        shell: bash
+        run: ./scripts/select-tests.sh delta NoTestRun
+
+      - name: Validate delta against UAT
+        id: validate
+        shell: bash
+        run: ./scripts/deploy-delta.sh validate delta "$SF_TARGET_ORG" "${{ steps.tests.outputs.test_level }}" "${{ steps.tests.outputs.tests }}"
+
+      - name: Upload delta evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uat-pr-delta-${{ github.event.pull_request.number }}
+          path: |
+            delta/package/package.xml
+            delta/destructiveChanges/destructiveChanges.xml
+            delta/detected-tests.txt
+            deployment-result.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Logout and cleanup
+        if: always()
+        shell: bash
+        run: |
+          sf org logout --target-org "$SF_TARGET_ORG" --no-prompt || true
+          rm -f .sf-auth-url.txt

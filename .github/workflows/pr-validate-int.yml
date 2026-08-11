@@ -1,7 +1,5 @@
 name: INT PR Validation
 
--
-
 on:
   pull_request:
     branches: [int]
@@ -26,10 +24,6 @@ jobs:
 
     steps:
       - name: Enforce promotion path sit to int
-        shell: bash
-        run: |
-          if [[ "${{ github.head_ref }}" != "sit" ]]; then
-                - name: Enforce promotion path sit to int
         shell: bash
         run: |
           if [[ "${{ github.head_ref }}" != "sit" ]]; then
@@ -62,35 +56,35 @@ jobs:
         shell: bash
         env:
           FROM_REF: ${{ github.event.pull_request.base.sha }}
-                TO_REF: ${{ github.event.pull_request.head.sha }}
-    run: ./scripts/generate-delta.sh "$FROM_REF" "$TO_REF" delta
+          TO_REF: ${{ github.event.pull_request.head.sha }}
+        run: ./scripts/generate-delta.sh "$FROM_REF" "$TO_REF" delta
 
-  - name: Select deployment tests
-    id: tests
-    shell: bash
-    run: ./scripts/select-tests.sh delta NoTestRun
+      - name: Select deployment tests
+        id: tests
+        shell: bash
+        run: ./scripts/select-tests.sh delta NoTestRun
 
-  - name: Validate delta against INT
-    id: validate
-    shell: bash
-    run: ./scripts/deploy-delta.sh validate delta "$SF_TARGET_ORG" "${{ steps.tests.outputs.test_level }}" "${{ steps.tests.outputs.tests }}"
+      - name: Validate delta against INT
+        id: validate
+        shell: bash
+        run: ./scripts/deploy-delta.sh validate delta "$SF_TARGET_ORG" "${{ steps.tests.outputs.test_level }}" "${{ steps.tests.outputs.tests }}"
 
-  - name: Upload delta evidence
-    if: always()
-    uses: actions/upload-artifact@v4
-    with:
-      name: int-pr-delta-${{ github.event.pull_request.number }}
-      path: |
-        delta/package/package.xml
-        delta/destructiveChanges/destructiveChanges.xml
-        delta/detected-tests.txt
-        deployment-result.json
-      if-no-files-found: ignore
-      retention-days: 14
+      - name: Upload delta evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-pr-delta-${{ github.event.pull_request.number }}
+          path: |
+            delta/package/package.xml
+            delta/destructiveChanges/destructiveChanges.xml
+            delta/detected-tests.txt
+            deployment-result.json
+          if-no-files-found: ignore
+          retention-days: 14
 
-  - name: Logout and cleanup
-    if: always()
-    shell: bash
-    run: |
-      sf org logout --target-org "$SF_TARGET_ORG" --no-prompt || true
-      rm -f .sf-auth-url.txt
+      - name: Logout and cleanup
+        if: always()
+        shell: bash
+        run: |
+          sf org logout --target-org "$SF_TARGET_ORG" --no-prompt || true
+          rm -f .sf-auth-url.txt

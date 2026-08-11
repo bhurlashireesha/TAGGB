@@ -1,13 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
     <types>
-<<<<<<< HEAD
-        <members>*</members>
-        <name>CustomObject</name>
-=======
         <members>Test_P10</members>
         <name>Permissionset</name>
->>>>>>> a6a05f5 (bbbbbbbbbbbbbbbbbbbbbb)
     </types>
     <version>67.0</version>
 </Package>

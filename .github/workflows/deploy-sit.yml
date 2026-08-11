@@ -1,8 +1,11 @@
+# Workflow name shown in GitHub Actions UI
 name: Deploy SIT and Create Release Tag
 
 on:
+  # Trigger when code is pushed to the sit branch
   push:
     branches: [sit]
+  # Allow manual triggering with an optional baseline commit/tag
   workflow_dispatch:
     inputs:
       from_ref:
@@ -10,32 +13,36 @@ on:
         required: false
         type: string
 
+# Permissions needed to push tags and create releases
 permissions:
   contents: write
 
+# Ensure only one SIT deploy runs at a time
 concurrency:
   group: deploy-sit
   cancel-in-progress: false
 
 jobs:
   deploy:
-     if: github.event_name == 'push' && github.ref == 'refs/heads/sit'
+    # Extra guard: only run on push events to sit branch
+    if: github.event_name == 'push' && github.ref == 'refs/heads/sit'
     runs-on: ubuntu-latest
     environment: sit
     timeout-minutes: 60
     env:
-      SF_TARGET_ORG: SIT
-      SF_TEST_LEVEL: RunLocalTests
-      SGD_VERSION: 7.2.0
+      SF_TARGET_ORG: SIT          # Target Salesforce org alias
+      SF_TEST_LEVEL: RunLocalTests # Test level for deployment
+      SGD_VERSION: 7.2.0          # Version of sfdx-git-delta plugin
 
     steps:
-
+      # Step 1: Checkout the merged commit with full history
       - name: Checkout merged SIT revision with full history
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
 
+      # Step 2: Install Salesforce CLI and sfdx-git-delta plugin
       - name: Install Salesforce CLI and SGD
         shell: bash
         run: |
@@ -45,6 +52,7 @@ jobs:
           sf version
           sf plugins
 
+      # Step 3: Resolve baseline commit/tag for delta generation
       - name: Resolve delta baseline
         id: baseline
         shell: bash
@@ -54,6 +62,7 @@ jobs:
         run: |
           set -euo pipefail
           git fetch --force --tags origin
+          # Use manual input if provided, otherwise find latest sit-* tag
           if [[ -n "${MANUAL_FROM_REF:-}" ]]; then
             from_ref="$MANUAL_FROM_REF"
           else
@@ -62,6 +71,7 @@ jobs:
               from_ref="${PUSH_BEFORE_SHA:-}"
             fi
           fi
+          # Fail if no baseline found
           if [[ -z "$from_ref" || "$from_ref" =~ ^0+$ ]]; then
             echo "No baseline exists. Run manually with a known from_ref for the first deployment."
             exit 1
@@ -69,27 +79,33 @@ jobs:
           git rev-parse --verify "${from_ref}^{commit}"
           echo "from_ref=$from_ref" >> "$GITHUB_OUTPUT"
           echo "Using baseline: $from_ref"
+
+      # Step 4: Make helper scripts executable
       - name: Make scripts executable
         shell: bash
         run: |
           chmod +x scripts/*.sh
           ls -la scripts
 
+      # Step 5: Generate delta package between baseline and current commit
       - name: Generate merged delta
         shell: bash
         run: ./scripts/generate-delta.sh "${{ steps.baseline.outputs.from_ref }}" "$GITHUB_SHA" delta
 
+      # Step 6: Authenticate to SIT org using stored auth URL
       - name: Authenticate to SIT
         shell: bash
         env:
           SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
         run: ./scripts/authenticate.sh "$SF_TARGET_ORG"
 
+      # Step 7: Deploy delta to SIT org
       - name: Deploy delta to SIT
         id: deploy
         shell: bash
         run: ./scripts/deploy-delta.sh deploy delta "$SF_TARGET_ORG" "$SF_TEST_LEVEL"
 
+      # Step 8: Build immutable SIT tag and component ledger if changes deployed
       - name: Build immutable SIT tag and component ledger
         if: steps.deploy.outputs.has_changes == 'true'
         id: release
@@ -100,6 +116,7 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           ./scripts/build-component-ledger.sh delta "$tag" "${{ steps.baseline.outputs.from_ref }}" "$GITHUB_SHA"
 
+      # Step 9: Create and push annotated Git tag
       - name: Create and push annotated tag
         if: steps.deploy.outputs.has_changes == 'true'
         shell: bash
@@ -112,6 +129,7 @@ jobs:
           git tag -a "$RELEASE_TAG" "$GITHUB_SHA" -m "Successful SIT deployment from ${{ steps.baseline.outputs.from_ref }} to $GITHUB_SHA"
           git push origin "refs/tags/$RELEASE_TAG"
 
+      # Step 10: Create GitHub release with deployment artifacts
       - name: Create GitHub release with component version map
         if: steps.deploy.outputs.has_changes == 'true'
         shell: bash
@@ -121,26 +139,4 @@ jobs:
         run: |
           set -euo pipefail
           gh release create "$RELEASE_TAG" \
-            delta/component-version-map.csv \
-            delta/package/package.xml \
-            --title "$RELEASE_TAG" \
-            --notes "SIT deployment succeeded. Baseline: ${{ steps.baseline.outputs.from_ref }}. Revision: $GITHUB_SHA. The attached ledger maps every delta component to this release tag."
-
-      - name: Upload deployment evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: sit-deployment-${{ github.run_number }}
-          path: |
-            delta/package/package.xml
-            delta/destructiveChanges/destructiveChanges.xml
-            delta/component-version-map.csv
-          if-no-files-found: ignore
-          retention-days: 90
-
-      - name: Logout and remove auth file
-        if: always()
-        shell: bash
-        run: |
-          sf org logout --target-org "$SF_TARGET_ORG" --no-prompt || true
-          rm -f .sf-auth-url.txt
+            delta/component

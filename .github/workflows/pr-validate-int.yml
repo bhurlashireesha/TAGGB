@@ -1,28 +1,34 @@
+# Workflow name shown in GitHub Actions UI
 name: INT PR Validation
 
 on:
+  # Trigger when a pull request targets the int branch
   pull_request:
     branches: [int]
     types: [opened, synchronize, reopened, ready_for_review]
 
+# Permissions needed to read repository contents
 permissions:
   contents: read
 
+# Ensure only one INT PR validation runs per PR at a time
 concurrency:
   group: int-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   validate:
+    # Skip validation if the PR is still a draft
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     environment: int-validation
     timeout-minutes: 90
     env:
-      SF_TARGET_ORG: INT
-      SGD_VERSION: 7.2.0
+      SF_TARGET_ORG: INT          # Target Salesforce org alias
+      SGD_VERSION: 7.2.0          # Version of sfdx-git-delta plugin
 
     steps:
+      # Step 1: Enforce promotion path (only allow SIT → INT PRs)
       - name: Enforce promotion path sit to int
         shell: bash
         run: |
@@ -31,12 +37,14 @@ jobs:
             exit 1
           fi
 
+      # Step 2: Checkout the exact PR commit with full history
       - name: Checkout exact PR revision with full history
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
+      # Step 3: Install Salesforce CLI and sfdx-git-delta plugin
       - name: Install Salesforce CLI and SGD
         shell: bash
         run: |
@@ -46,18 +54,21 @@ jobs:
           sf version
           sf plugins
           
+      # Step 4: Make helper scripts executable
       - name: Make scripts executable
         shell: bash
         run: |
           chmod +x scripts/*.sh
           ls -la scripts
 
+      # Step 5: Authenticate to INT org using stored auth URL
       - name: Authenticate to INT
         shell: bash
         env:
           SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
         run: ./scripts/authenticate.sh "$SF_TARGET_ORG"
 
+      # Step 6: Generate delta package between base and head commits
       - name: Generate PR delta
         shell: bash
         env:
@@ -65,19 +76,23 @@ jobs:
           TO_REF: ${{ github.event.pull_request.head.sha }}
         run: ./scripts/generate-delta.sh "$FROM_REF" "$TO_REF" delta
         
+      # Step 7: Ensure test selection script is executable
       - name: Ensure select-tests.sh is executable
         run: chmod +x ./scripts/select-tests.sh
 
+      # Step 8: Select deployment tests (fallback to RunLocalTests if none found)
       - name: Select deployment tests
         id: tests
         shell: bash
         run: ./scripts/select-tests.sh delta RunLocalTests
 
+      # Step 9: Validate delta against INT org
       - name: Validate delta against INT
         id: validate
         shell: bash
         run: ./scripts/deploy-delta.sh validate delta "$SF_TARGET_ORG" "${{ steps.tests.outputs.test_level }}" "${{ steps.tests.outputs.tests }}"
 
+      # Step 10: Upload validation evidence as artifacts
       - name: Upload delta evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -91,6 +106,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      # Step 11: Logout and cleanup auth files
       - name: Logout and cleanup
         if: always()
         shell: bash

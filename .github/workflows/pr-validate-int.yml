@@ -45,6 +45,11 @@ jobs:
           echo y | sf plugins install "sfdx-git-delta@${SGD_VERSION}"
           sf version
           sf plugins
+      - name: Make scripts executable
+        shell: bash
+        run: |
+          chmod +x scripts/*.sh
+          ls -la scripts
 
       - name: Authenticate to INT
         shell: bash
@@ -58,6 +63,9 @@ jobs:
           FROM_REF: ${{ github.event.pull_request.base.sha }}
           TO_REF: ${{ github.event.pull_request.head.sha }}
         run: ./scripts/generate-delta.sh "$FROM_REF" "$TO_REF" delta
+        
+      - name: Ensure select-tests.sh is executable
+        run: chmod +x ./scripts/select-tests.sh
 
       - name: Select deployment tests
         id: tests

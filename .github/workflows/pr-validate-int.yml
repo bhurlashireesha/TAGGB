@@ -71,7 +71,7 @@ jobs:
       - name: Select deployment tests
         id: tests
         shell: bash
-        run: ./scripts/select-tests.sh delta RunSpecifiedTests
+        run: ./scripts/select-tests.sh delta RunLocalTests
 
       - name: Validate delta against INT
         id: validate

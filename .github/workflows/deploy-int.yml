@@ -78,7 +78,7 @@ jobs:
       - name: Select deployment tests
         id: tests
         shell: bash
-        run: ./scripts/select-tests.sh delta NoTestRun
+        run: ./scripts/select-tests.sh delta RunLocalTests
 
       - name: Authenticate to INT
         shell: bash

@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip sit deploy]')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/sit'
     runs-on: ubuntu-latest
     environment: sit
     timeout-minutes: 60
